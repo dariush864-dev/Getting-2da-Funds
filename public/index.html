@@ -1,152 +1,32 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Payment Gateway Demo</title>
-  <script src="https://js.stripe.com/v3/"></script>
-  <style>
-    body {
-      font-family: system-ui, sans-serif;
-      background: #0f1115;
-      color: #f5f5f5;
-      margin: 0;
-      min-height: 100vh;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      padding: 24px;
-    }
-    .card {
-      background: #1a1d24;
-      border: 1px solid #2a2f3a;
-      border-radius: 12px;
-      padding: 28px;
-      width: 100%;
-      max-width: 420px;
-      box-shadow: 0 12px 40px rgba(0, 0, 0, 0.35);
-    }
-    h1 { margin: 0 0 8px; font-size: 1.4rem; }
-    p { color: #a8b0bd; margin: 0 0 20px; }
-    label { display: block; margin-bottom: 8px; font-size: 0.9rem; }
-    select, button {
-      width: 100%;
-      box-sizing: border-box;
-      border-radius: 8px;
-      font-size: 1rem;
-    }
-    select {
-      padding: 12px;
-      margin-bottom: 16px;
-      background: #0f1115;
-      color: #fff;
-      border: 1px solid #2a2f3a;
-    }
-    #card-element {
-      background: #fff;
-      padding: 12px;
-      border-radius: 8px;
-      margin-bottom: 16px;
-    }
-    button {
-      padding: 14px;
-      border: none;
-      background: #635bff;
-      color: #fff;
-      font-weight: 600;
-      cursor: pointer;
-    }
-    button:disabled { opacity: 0.6; cursor: not-allowed; }
-    .status { margin-top: 16px; min-height: 1.2rem; font-size: 0.95rem; }
-    .error { color: #ff7b7b; }
-    .success { color: #6dffb0; }
-  </style>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Payment Gateway</title>
+    <link rel="stylesheet" href="style.css">
+    <script src="https://js.stripe.com/v3/"></script>
+    <script src="app.js" defer></script>
 </head>
-<body>
-  <div class="card">
-    <h1>Payment Gateway Demo</h1>
-    <p>Standalone checkout using server-side pricing. For sanctuary-core, call <code>/api/payments/intents</code> instead.</p>
-
-    <label for="product">Product</label>
-    <select id="product">
-      <option value="course_basic">Basic Course — $25.00</option>
-      <option value="course_premium">Premium Course — $99.00</option>
-      <option value="donation">Donation — $10.00</option>
-    </select>
-
-    <div id="card-element"></div>
-    <button id="pay-btn" type="button">Pay now</button>
-    <div id="status" class="status"></div>
-  </div>
-
-  <script>
-    const statusEl = document.getElementById('status');
-    const payBtn = document.getElementById('pay-btn');
-    const productSelect = document.getElementById('product');
-
-    let stripe;
-    let cardElement;
-
-    function setStatus(message, type = '') {
-      statusEl.textContent = message;
-      statusEl.className = `status ${type}`;
-    }
-
-    async function init() {
-      const configRes = await fetch('/api/public/config');
-      const config = await configRes.json();
-
-      if (!config.stripePublishableKey) {
-        setStatus('Set STRIPE_PUBLISHABLE_KEY in .env to enable the demo checkout.', 'error');
-        payBtn.disabled = true;
-        return;
-      }
-
-      stripe = Stripe(config.stripePublishableKey);
-      const elements = stripe.elements();
-      cardElement = elements.create('card');
-      cardElement.mount('#card-element');
-    }
-
-    payBtn.addEventListener('click', async () => {
-      payBtn.disabled = true;
-      setStatus('Creating payment...');
-
-      try {
-        const response = await fetch('/api/public/checkout/stripe', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ productId: productSelect.value, quantity: 1 }),
-        });
-
-        const data = await response.json();
-        if (!response.ok) {
-          throw new Error(data.error?.message || 'Failed to create checkout');
-        }
-
-        setStatus('Confirming card payment...');
-
-        const result = await stripe.confirmCardPayment(data.clientSecret, {
-          payment_method: { card: cardElement },
-        });
-
-        if (result.error) {
-          throw new Error(result.error.message);
-        }
-
-        if (result.paymentIntent.status === 'succeeded') {
-          setStatus(`Payment succeeded. Payment ID: ${data.paymentId}`, 'success');
-        } else {
-          setStatus(`Payment status: ${result.paymentIntent.status}`);
-        }
-      } catch (error) {
-        setStatus(error.message, 'error');
-      } finally {
-        payBtn.disabled = false;
-      }
-    });
-
-    init();
-  </script>
+<body class="dark-mode">
+    <div class="checkout-container">
+        <h2>Checkout</h2>
+        <!-- The critical form tag starts here -->
+        <form id="payment-form">
+            <select id="product-select" style="margin-bottom: 15px; padding: 10px; width: 100%; border-radius: 5px; background: #333; color: white; border: 1px solid #555;">
+                <option value="course_basic">Basic Reading — $65.00</option>
+                <option value="course_premium">Premium Reading — $111.00</option>
+                <option value="couples_reading">Couples Reading — $222.00</option>
+                <option value="donation">Donation (Pay what you want)</option>
+            </select>
+            
+            <input type="number" id="custom-amount" placeholder="Enter amount (e.g. 15)" style="display: none; margin-bottom: 15px; padding: 10px; width: 100%; border-radius: 5px; background: #333; color: white; border: 1px solid #555;" />
+            
+            <div id="payment-element"></div>
+            
+            <button id="submit-btn" type="submit" style="margin-top: 20px; padding: 10px; width: 100%;">Pay now</button>
+        </form>
+        <!-- The form tag ends here -->
+    </div>
 </body>
 </html>
