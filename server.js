@@ -1,5 +1,6 @@
 const express = require('express');
 const path = require('path');
+const requireApiKey = require('./middleware/auth');
 const { loadEnv } = require('./config/env');
 const { createStripeClient } = require('./services/stripeService');
 const { createPaymentsRouter } = require('./routes/payments');
@@ -20,7 +21,7 @@ app.use('/webhooks', createWebhooksRouter({ stripe, config }));
 app.use(express.json());
 app.use(express.static(path.join(__dirname, 'public')));
 
-app.use('/api/payments', createPaymentsRouter({ stripe, apiKey: config.paymentsApiKey }));
+app.use('/api/payments', requireAPIkey, createPaymentsRouter({ stripe, apiKey: config.paymentsApiKey }));
 app.use(
   '/api/public',
   createPublicRouter({ stripe, publishableKey: config.stripePublishableKey })

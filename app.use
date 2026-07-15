@@ -1,0 +1,3 @@
+// Change this part to include the middleware:
+app.use('/api/payments', requireApiKey, createPaymentsRouter({ stripe, 
+config }));
