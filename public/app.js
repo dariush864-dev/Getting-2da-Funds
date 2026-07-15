@@ -1,4 +1,4 @@
-const stripe = Stripe('pk_test_51Tsh88DQpw9nHMqkCNPse41PZ2TMw6xf4HNjn2B5dIQ2n5i2PBzA17KT1tM11LIidRqPMhvjwXrEkFHZ9owIlDrA00S5cDS2m7');
+const stripe = Stripe(pk_live_51Tsh7bDH1lCZTxjVij19zVPU9pQDGIaNDZuRk7Zat5Mnvu3W76utFP2h6EkUI9Ku1Mbhd3hrWbPZMsulxebtFlYH003qw7GkhE);
 
 document.addEventListener('DOMContentLoaded', async () => {
     const productSelect = document.getElementById('product-select');
@@ -50,8 +50,7 @@ document.addEventListener('DOMContentLoaded', async () => {
         event.preventDefault();
         
         if (!elements) {
-            console.error('Payment elements not initialized. Please wait 
-     for the form to load.');
+            console.error('Payment elements not initialized. Please wait for the form to load.');
             return; 
         }
 
