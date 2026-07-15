@@ -49,7 +49,11 @@ document.addEventListener('DOMContentLoaded', async () => {
     // Handle form submission
     form.addEventListener('submit', async (event) => {
         event.preventDefault();
-        
+        if (!elements) {
+            console.error('Payment elements not initialized. Please wait 
+for the form to load.');
+            return;
+}
         const { error } = await stripe.confirmPayment({
             elements,
             confirmParams: { return_url: 'http://localhost:3000/success.html' },
