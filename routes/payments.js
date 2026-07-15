@@ -1,6 +1,6 @@
 const express = require('express');
 const { AppError } = require('../lib/errors');
-const { requireApiKey } = require('../middleware/auth');
+const  requireApiKey  = require('../middleware/auth');
 const { resolveAmount } = require('../data/catalog');
 const { createPayment, getPayment } = require('../data/payments');
 const { createPaymentId } = require('../lib/id');
