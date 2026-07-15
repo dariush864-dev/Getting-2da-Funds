@@ -31,8 +31,9 @@ document.addEventListener('DOMContentLoaded', async () => {
 
         const response = await fetch('/api/payments/intents', {
             method: 'POST',
-            headers: { 'Content-Type': 'application/json', 'x-api-key': 'my_secret_handshake_123' },
-            body: JSON.stringify({ orderId: testOrderId, productId: productSelect.value, customAmount: amountToSend })
+            headers: { 'Content-Type': 'application/json', 'x-api-key': 
+'i_am_sovereign_1991' },
+            body: JSON.stringify({amount: 100, currency: 'usd' })
         });
 
         const data = await response.json();
