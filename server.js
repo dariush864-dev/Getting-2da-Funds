@@ -21,7 +21,8 @@ app.use('/webhooks', createWebhooksRouter({ stripe, config }));
 app.use(express.json());
 app.use(express.static(path.join(__dirname, 'public')));
 
-app.use('/api/payments', requireAPIkey, createPaymentsRouter({ stripe, apiKey: config.paymentsApiKey }));
+app.use('/api/payments', requireApiKey, createPaymentsRouter({ stripe, 
+apiKey: config.paymentsApiKey }));
 app.use(
   '/api/public',
   createPublicRouter({ stripe, publishableKey: config.stripePublishableKey })
