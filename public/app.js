@@ -45,21 +45,26 @@ document.addEventListener('DOMContentLoaded', async () => {
             paymentElement.mount('#payment-element');
         }
     }
-
     // Handle form submission
     form.addEventListener('submit', async (event) => {
         event.preventDefault();
+        
         if (!elements) {
             console.error('Payment elements not initialized. Please wait 
-for the form to load.');
-            return;
-}
+     for the form to load.');
+            return; 
+        }
+
         const { error } = await stripe.confirmPayment({
-            elements,
-            confirmParams: { return_url: 'http://localhost:3000/success.html' },
+            elements: elements,
+            confirmParams: { 
+                return_url: window.location.origin + '/success.html' 
+            }
         });
 
-        if (error) console.error('Stripe Payment Error:', error.message);
+        if (error) {
+            console.error('Stripe Payment Error:', error.message);
+        }
     });
 
     initializeCheckout();
