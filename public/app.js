@@ -29,7 +29,7 @@ document.addEventListener('DOMContentLoaded', async () => {
             amountToSend = Math.round(parseFloat(customAmountInput.value) * 100);
         }
 
-  stop here!! const response = await fetch('/api/payments/intents', {
+            const response = await fetch('/api/payments/intents', {
             method: 'POST',
             headers: { 
                 'Content-Type': 'application/json', 
