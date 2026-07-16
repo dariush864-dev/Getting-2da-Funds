@@ -1,4 +1,4 @@
-const stripe = Stripe(pk_live_51Tsh7bDH1lCZTxjVij19zVPU9pQDGIaNDZuRk7Zat5Mnvu3W76utFP2h6EkUI9Ku1Mbhd3hrWbPZMsulxebtFlYH003qw7GkhE);
+const stripe = Stripe('pk_live_51Tsh7bDH1lCZTxjVij19zVPU9pQDGIaNDZuRk7Zat5Mnvu3W76utFP2h6EkUI9Ku1Mbhd3hrWbPZMsulxebtFlYH003qw7GkhE');
 
 document.addEventListener('DOMContentLoaded', async () => {
     const productSelect = document.getElementById('product-select');
