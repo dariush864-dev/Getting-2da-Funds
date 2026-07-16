@@ -42,12 +42,12 @@ document.addEventListener('DOMContentLoaded', async () => {
             })
         });
         
-        // --- ADDED SAFETY CHECK ---
+        
         if (!response.ok) {
             console.error(`Server Error: ${response.status}`);
-            return; // Stops the code from crashing if the server fails
+            return;
         }
-        //--------------
+        
         const data = await response.json(); 
         
         if (data.clientSecret) {
