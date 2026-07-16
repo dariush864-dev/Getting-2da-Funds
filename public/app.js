@@ -1,84 +1,40 @@
 const stripe = 
-Stripe('pk_test_51Tsh88DQpw9nHMqkCNPse41PZ2TMw6xf4HNjn2B5dIQ2n5i2PBzA17KT1tM11LIidRqPMhvjwXrFHZ9owIlDrA00S5cDS2m7');
+Stripe('pk_live_51Tsh7bDH1lCZTxjVij19zVPU9pQDGIaNDZuRk7Zat5Mnvu3W76utFP2h6EkUI9Ku1Mbhd3hrWbPZMsulxebtFlYH003qw7GkhE');
 
 document.addEventListener('DOMContentLoaded', async () => {
-    const productSelect = document.getElementById('product-select');
-    const customAmountInput = document.getElementById('custom-amount');
-    const paymentElementContainer = document.getElementById('payment-element');
     const form = document.getElementById('payment-form');
-
+    const productSelect = document.getElementById('product-select');
     let elements;
 
-    productSelect.addEventListener('change', (e) => {
-        if (e.target.value === 'donation') {
-            customAmountInput.style.display = 'block';
-        } else {
-            customAmountInput.style.display = 'none';
-            customAmountInput.value = '';
-        }
-    });
-
-    async function initializeCheckout() {
-        const testOrderId = 'order_' + Date.now();
-        let amountToSend = null;
-
-        if (productSelect.value === 'donation') {
-            if (!customAmountInput.value || customAmountInput.value < 1) {
-                paymentElementContainer.innerHTML = '<p style="color: 
-#aab7c4;">Please enter an amount of at least $1.00.</p>';
-                return;
-            }
-            amountToSend = Math.round(parseFloat(customAmountInput.value) * 100);
-        }
-
+    async function setupPayment() {
         const response = await fetch('/api/payments/intents', {
             method: 'POST',
-            headers: {
-                'Content-Type': 'application/json',
-                'x-api-key': 'i_am_sovereign_1991'
-            },
+            headers: { 'Content-Type': 'application/json', 'x-api-key': 
+'i_am_sovereign_1991' },
             body: JSON.stringify({
-                orderId: testOrderId,
-                productId: productSelect.value,
-                customAmount: amountToSend
+                orderId: 'order_' + Date.now(),
+                productId: productSelect.value
             })
         });
-
-        if (!response.ok) {
-            console.error('Server error during intent creation');
-            return;
-        }
 
         const data = await response.json();
 
         if (data.clientSecret) {
             elements = stripe.elements({ clientSecret: data.clientSecret });
             const paymentElement = elements.create('payment');
-            paymentElementContainer.innerHTML = '';
             paymentElement.mount('#payment-element');
         }
     }
 
-    form.addEventListener('submit', async (event) => {
-        event.preventDefault();
-
-        if (!elements) {
-            console.error('Elements not initialized');
-            return;
-        }
-
+    form.addEventListener('submit', async (e) => {
+        e.preventDefault();
         const { error } = await stripe.confirmPayment({
             elements,
-            confirmParams: { return_url: window.location.origin + '/success.html' },
+            confirmParams: { return_url: window.location.origin + '/success.html' }
         });
-
-        if (error) console.error('Stripe Payment Error:', error.message);
+        if (error) console.error(error);
     });
 
-    initializeCheckout();
-    productSelect.addEventListener('change', initializeCheckout);
-    customAmountInput.addEventListener('input', () => {
-        clearTimeout(window.typingTimer);
-        window.typingTimer = setTimeout(initializeCheckout, 500);
-    });
+    setupPayment();
+    productSelect.addEventListener('change', setupPayment);
 });
