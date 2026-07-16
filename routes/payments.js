@@ -1,6 +1,6 @@
 const express = require('express');
 const { AppError } = require('../lib/errors');
-const  requireApiKey  = require('../middleware/auth');
+
 const { resolveAmount } = require('../data/catalog');
 const { createPayment, getPayment } = require('../data/payments');
 const { createPaymentId } = require('../lib/id');
@@ -8,7 +8,6 @@ const { createPaymentIntent } = require('../services/stripeService');
 
 function createPaymentsRouter({ stripe, apiKey }) {
   const router = express.Router();
-  router.use(requireApiKey(apiKey));
 
   router.post('/intents', async (req, res, next) => {
     try {

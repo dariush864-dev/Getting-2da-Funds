@@ -29,14 +29,26 @@ document.addEventListener('DOMContentLoaded', async () => {
             amountToSend = Math.round(parseFloat(customAmountInput.value) * 100);
         }
 
-        const response = await fetch('/api/payments/intents', {
+  stop here!! const response = await fetch('/api/payments/intents', {
             method: 'POST',
-            headers: { 'Content-Type': 'application/json', 'x-api-key': 
-'i_am_sovereign_1991' },
-            body: JSON.stringify({amount: 100, currency: 'usd' })
+            headers: { 
+                'Content-Type': 'application/json', 
+                'x-api-key': 'i_am_sovereign_1991' 
+            },
+            body: JSON.stringify({
+                orderId: testOrderId,
+                productId: productSelect.value,
+                customAmount: amountToSend
+            })
         });
-
-        const data = await response.json();
+        
+        // --- ADDED SAFETY CHECK ---
+        if (!response.ok) {
+            console.error(`Server Error: ${response.status}`);
+            return; // Stops the code from crashing if the server fails
+        }
+        //--------------
+        const data = await response.json(); 
         
         if (data.clientSecret) {
             elements = stripe.elements({ clientSecret: data.clientSecret });
