@@ -1,11 +1,12 @@
-const stripe = Stripe('pk_live_51Tsh7bDH1lCZTxjVij19zVPU9pQDGIaNDZuRk7Zat5Mnvu3W76utFP2h6EkUI9Ku1Mbhd3hrWbPZMsulxebtFlYH003qw7GkhE');
+const stripe = 
+Stripe('pk_test_51Tsh88DQpw9nHMqkCNPse41PZ2TMw6xf4HNjn2B5dIQ2n5i2PBzA17KT1tM11LIidRqPMhvjwXrFHZ9owIlDrA00S5cDS2m7');
 
 document.addEventListener('DOMContentLoaded', async () => {
     const productSelect = document.getElementById('product-select');
     const customAmountInput = document.getElementById('custom-amount');
     const paymentElementContainer = document.getElementById('payment-element');
-    const form = document.getElementById('payment-form'); // Assuming your <form id="payment-form"> exists
-    
+    const form = document.getElementById('payment-form');
+
     let elements;
 
     productSelect.addEventListener('change', (e) => {
@@ -23,17 +24,18 @@ document.addEventListener('DOMContentLoaded', async () => {
 
         if (productSelect.value === 'donation') {
             if (!customAmountInput.value || customAmountInput.value < 1) {
-                paymentElementContainer.innerHTML = '<p style="color: #aab7c4;">Please enter an amount of at least $1.00.</p>';
+                paymentElementContainer.innerHTML = '<p style="color: 
+#aab7c4;">Please enter an amount of at least $1.00.</p>';
                 return;
             }
             amountToSend = Math.round(parseFloat(customAmountInput.value) * 100);
         }
 
-            const response = await fetch('/api/payments/intents', {
+        const response = await fetch('/api/payments/intents', {
             method: 'POST',
-            headers: { 
-                'Content-Type': 'application/json', 
-                'x-api-key': 'i_am_sovereign_1991' 
+            headers: {
+                'Content-Type': 'application/json',
+                'x-api-key': 'i_am_sovereign_1991'
             },
             body: JSON.stringify({
                 orderId: testOrderId,
@@ -41,15 +43,14 @@ document.addEventListener('DOMContentLoaded', async () => {
                 customAmount: amountToSend
             })
         });
-        
-        
+
         if (!response.ok) {
-            console.error(`Server Error: ${response.status}`);
+            console.error('Server error during intent creation');
             return;
         }
-        
-        const data = await response.json(); 
-        
+
+        const data = await response.json();
+
         if (data.clientSecret) {
             elements = stripe.elements({ clientSecret: data.clientSecret });
             const paymentElement = elements.create('payment');
@@ -57,25 +58,21 @@ document.addEventListener('DOMContentLoaded', async () => {
             paymentElement.mount('#payment-element');
         }
     }
-    // Handle form submission
+
     form.addEventListener('submit', async (event) => {
         event.preventDefault();
-        
+
         if (!elements) {
-            console.error('Payment elements not initialized. Please wait for the form to load.');
-            return; 
+            console.error('Elements not initialized');
+            return;
         }
 
         const { error } = await stripe.confirmPayment({
-            elements: elements,
-            confirmParams: { 
-                return_url: window.location.origin + '/success.html' 
-            }
+            elements,
+            confirmParams: { return_url: window.location.origin + '/success.html' },
         });
 
-        if (error) {
-            console.error('Stripe Payment Error:', error.message);
-        }
+        if (error) console.error('Stripe Payment Error:', error.message);
     });
 
     initializeCheckout();
