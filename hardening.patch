@@ -1,0 +1,124 @@
+--- a/middleware/auth.js
++++ b/middleware/auth.js
+@@ -110,12 +110,8 @@
+   return function(req, res, next) {
+     const apiKey = req.get('x-api-key');
+ 
+-    console.log('Received API key:', apiKey);
+-    console.log('Expected API key:', expectedApiKey);
+-
++    // SECURITY PATCH: Do not log the actual key in production logs
+     if (!apiKey || apiKey !== expectedApiKey) {
++      console.warn('Unauthorized access attempt: Invalid API key provided');
+       return next(
+         new AppError(
+           401,
+--- a/package.json
++++ b/package.json
+@@ -10,9 +10,12 @@
+     "dev": "node --watch server.js"
+   },
+   "dependencies": {
+-    "dotenv": "^17.4.2",
+-    "express": "^5.2.1",
+-    "stripe": "^22.3.1"
++    "cors": "^2.8.5",
++    "dotenv": "^16.4.7",
++    "express": "^5.0.1",
++    "helmet": "^8.0.0",
++    "stripe": "^17.5.0"
+   }
+ }
+--- a/routes/webhooks.js
++++ b/routes/webhooks.js
+@@ -10,15 +10,17 @@
+     const signature = req.get('stripe-signature');
+ 
+     if (!signature) {
++      console.warn('Webhook received without signature');
+       return res.status(400).send('Missing stripe-signature header');
+     }
+ 
+     if (!config.stripeWebhookSecret) {
++      console.error('CRITICAL: STRIPE_WEBHOOK_SECRET is not configured');
+       return res.status(503).send('Webhook secret not configured');
+     }
+ 
+     let event;
+@@ -42,6 +44,8 @@
+               : mapStripeStatus(paymentIntent.status);
+ 
+           const updated = updatePayment(payment.id, { status });
+           await notifySanctuaryCore(config, updated);
++        } else {
++          console.warn(`Webhook received for unknown payment intent: 
+${paymentIntent.id}`);
+         }
+       }
+     } catch (error) {
+@@ -51,5 +55,5 @@
+     }
+ 
+     res.json({ received: true });
+   });
+--- a/server.js
++++ b/server.js
+@@ -1,5 +1,7 @@
+ const express = require('express');
+ const path = require('path');
++const helmet = require('helmet');
++const cors = require('cors');
+ const requireApiKey = require('./middleware/auth');
+ const { loadEnv } = require('./config/env');
+ const { createStripeClient } = require('./services/stripeService');
+@@ -11,18 +13,23 @@
+ 
+ const config = loadEnv();
+ const stripe = createStripeClient(config.stripeSecretKey);
+ const app = express();
+ 
++// Security Middleware
++app.use(helmet()); 
++app.use(cors()); 
++
++// Webhooks must be parsed as raw buffers
+ app.get('/health', (req, res) => {
+   res.json({ status: 'ok', service: 'payment-gateway' });
+ });
+ 
+ app.use('/webhooks', createWebhooksRouter({ stripe, config }));
+ 
+ // Standard JSON parsing for other routes
+ app.use(express.json());
+ app.use(express.static(path.join(__dirname, 'public')));
+ 
+-app.use('/api/payments', requireApiKey, createPaymentsRouter({ stripe, 
+-apiKey: config.paymentsApiKey }));
++app.use('/api/payments', requireApiKey(config.paymentsApiKey), 
+createPaymentsRouter({ stripe }));
+ app.use(
+   '/api/public',
+   createPublicRouter({ stripe, publishableKey: config.stripePublishableKey })
+@@ -162,7 +169,5 @@
+ app.use(errorHandler);
+ 
+ app.listen(config.port, () => {
+-  console.log(`Payment gateway running on http://localhost:${config.port}`);
+-  console.log(`Health check: http://localhost:${config.port}/health`);
+-  console.log(`Demo checkout: http://localhost:${config.port}/`);
++  console.log(`Payment gateway running on port ${config.port}`);
+ });
+--- a/services/stripeService.js
++++ b/services/stripeService.js
+@@ -2,8 +2,12 @@
+ 
+ function createStripeClient(secretKey) {
+-  return new Stripe(secretKey);
++  if (!secretKey) throw new Error('STRIPE_SECRET_KEY is missing');
++  return new Stripe(secretKey, {
++    apiVersion: '2025-02-24.acacia',
++  });
+ }
+ 
+ async function createPaymentIntent(stripe, { amount, currency, metadata, 
+idempotencyKey }) {

@@ -1,5 +1,7 @@
 const express = require('express');
 const path = require('path');
+const helmet = require('helmet');
+const cors = require('cors');
 const requireApiKey = require('./middleware/auth');
 const { loadEnv } = require('./config/env');
 const { createStripeClient } = require('./services/stripeService');
@@ -12,17 +14,23 @@ const config = loadEnv();
 const stripe = createStripeClient(config.stripeSecretKey);
 const app = express();
 
+// Security Middleware
+app.use(helmet()); 
+app.use(cors()); 
+
+// Webhooks must be parsed as raw buffers before express.json()
+app.use('/webhooks', createWebhooksRouter({ stripe, config }));
+
+// Standard JSON parsing for other routes
+app.use(express.json());
+app.use(express.static(path.join(__dirname, 'public')));
+
 app.get('/health', (req, res) => {
   res.json({ status: 'ok', service: 'payment-gateway' });
 });
 
-app.use('/webhooks', createWebhooksRouter({ stripe, config }));
-
-app.use(express.json());
-app.use(express.static(path.join(__dirname, 'public')));
-
-app.use('/api/payments', requireApiKey, createPaymentsRouter({ stripe, 
-apiKey: config.paymentsApiKey }));
+app.use('/api/payments', requireApiKey(config.paymentsApiKey), createPaymentsRouter({ 
+stripe }));
 app.use(
   '/api/public',
   createPublicRouter({ stripe, publishableKey: config.stripePublishableKey })
@@ -31,7 +39,5 @@ app.use(
 app.use(errorHandler);
 
 app.listen(config.port, () => {
-  console.log(`Payment gateway running on http://localhost:${config.port}`);
-  console.log(`Health check: http://localhost:${config.port}/health`);
-  console.log(`Demo checkout: http://localhost:${config.port}/`);
+  console.log(`Payment gateway running on port ${config.port}`);
 });

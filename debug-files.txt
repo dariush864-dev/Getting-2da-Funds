@@ -1,0 +1,184 @@
+--- routes/webhooks.js ---
+const express = require('express');
+const { findByProviderRef, getPayment, updatePayment } = require('../data/payments');
+const { mapStripeStatus, verifyWebhookEvent } = require('../services/stripeService');
+const { notifySanctuaryCore } = require('../services/notifySanctuaryCore');
+
+function createWebhooksRouter({ stripe, config }) {
+  const router = express.Router();
+
+  router.post('/stripe', express.raw({ type: 'application/json' }), async (req, res) => {
+    const signature = req.get('stripe-signature');
+
+    if (!signature) {
+      return res.status(400).send('Missing stripe-signature header');
+    }
+
+    if (!config.stripeWebhookSecret) {
+      console.warn('Stripe webhook received but STRIPE_WEBHOOK_SECRET is not set');
+      return res.status(503).send('Webhook secret not configured');
+    }
+
+    let event;
+    try {
+      event = verifyWebhookEvent(stripe, req.body, signature, config.stripeWebhookSecret);
+    } catch (error) {
+      console.error('Stripe webhook verification failed:', error.message);
+      return res.status(400).send(`Webhook Error: ${error.message}`);
+    }
+
+    try {
+      if (event.type === 'payment_intent.succeeded' || event.type === 'payment_intent.payment_failed') {
+        const paymentIntent = event.data.object;
+        const payment =
+          findByProviderRef('stripe', paymentIntent.id) ||
+          (paymentIntent.metadata?.paymentId
+            ? getPayment(paymentIntent.metadata.paymentId)
+            : null);
+
+        if (payment) {
+          const status =
+            event.type === 'payment_intent.succeeded'
+              ? 'succeeded'
+              : mapStripeStatus(paymentIntent.status);
+
+          const updated = updatePayment(payment.id, { status });
+          await notifySanctuaryCore(config, updated);
+        }
+      }
+    } catch (error) {
+      console.error('Stripe webhook handler failed:', error.message);
+      return res.status(500).send('Webhook handler failed');
+    }
+
+    res.json({ received: true });
+  });
+
+  return router;
+}
+
+module.exports = { createWebhooksRouter };
+--- services/stripeService.js ---
+const Stripe = require('stripe');
+
+function createStripeClient(secretKey) {
+  return new Stripe(secretKey);
+}
+
+async function createPaymentIntent(stripe, { amount, currency, metadata, idempotencyKey }) {
+  return stripe.paymentIntents.create(
+    {
+      amount,
+      currency,
+      automatic_payment_methods: { enabled: true },
+      metadata,
+    },
+    idempotencyKey ? { idempotencyKey } : undefined
+  );
+}
+
+function mapStripeStatus(stripeStatus) {
+  const map = {
+    requires_payment_method: 'pending',
+    requires_confirmation: 'pending',
+    requires_action: 'pending',
+    processing: 'processing',
+    requires_capture: 'processing',
+    canceled: 'canceled',
+    succeeded: 'succeeded',
+  };
+  return map[stripeStatus] || 'pending';
+}
+
+function verifyWebhookEvent(stripe, payload, signature, webhookSecret) {
+  if (!webhookSecret) {
+    throw new Error('STRIPE_WEBHOOK_SECRET is not configured');
+  }
+  return stripe.webhooks.constructEvent(payload, signature, webhookSecret);
+}
+
+module.exports = {
+  createStripeClient,
+  createPaymentIntent,
+  mapStripeStatus,
+  verifyWebhookEvent,
+};
+--- middleware/auth.js ---
+const { AppError } = require('../lib/errors');
+
+function requireApiKey(expectedApiKey) {
+  return function(req, res, next) {
+    const apiKey = req.get('x-api-key');
+
+    console.log('Received API key:', apiKey);
+    console.log('Expected API key:', expectedApiKey);
+
+    if (!apiKey || apiKey !== expectedApiKey) {
+      return next(
+        new AppError(
+          401,
+          'unauthorized',
+          'Invalid or missing x-api-key header'
+        )
+      );
+    }
+
+    next();
+  };
+}
+
+module.exports = requireApiKey;
+--- server.js ---
+const express = require('express');
+const path = require('path');
+const requireApiKey = require('./middleware/auth');
+const { loadEnv } = require('./config/env');
+const { createStripeClient } = require('./services/stripeService');
+const { createPaymentsRouter } = require('./routes/payments');
+const { createPublicRouter } = require('./routes/public');
+const { createWebhooksRouter } = require('./routes/webhooks');
+const { errorHandler } = require('./middleware/errors');
+
+const config = loadEnv();
+const stripe = createStripeClient(config.stripeSecretKey);
+const app = express();
+
+app.get('/health', (req, res) => {
+  res.json({ status: 'ok', service: 'payment-gateway' });
+});
+
+app.use('/webhooks', createWebhooksRouter({ stripe, config }));
+
+app.use(express.json());
+app.use(express.static(path.join(__dirname, 'public')));
+
+app.use('/api/payments', requireApiKey, createPaymentsRouter({ stripe, 
+apiKey: config.paymentsApiKey }));
+app.use(
+  '/api/public',
+  createPublicRouter({ stripe, publishableKey: config.stripePublishableKey })
+);
+
+app.use(errorHandler);
+
+app.listen(config.port, () => {
+  console.log(`Payment gateway running on http://localhost:${config.port}`);
+  console.log(`Health check: http://localhost:${config.port}/health`);
+  console.log(`Demo checkout: http://localhost:${config.port}/`);
+});
+--- package.json ---
+{
+  "name": "payment-gateway",
+  "version": "1.0.0",
+  "private": true,
+  "main": "server.js",
+  "scripts": {
+    "start": "node server.js",
+    "dev": "node --watch server.js"
+  },
+  "dependencies": {
+    "dotenv": "^17.4.2",
+    "express": "^5.2.1",
+    "stripe": "^22.3.1"
+  }
+}

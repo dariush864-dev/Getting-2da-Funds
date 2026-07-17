@@ -1,10 +1,14 @@
 const Stripe = require('stripe');
 
 function createStripeClient(secretKey) {
-  return new Stripe(secretKey);
+  if (!secretKey) throw new Error('STRIPE_SECRET_KEY is missing');
+  return new Stripe(secretKey, {
+    apiVersion: '2025-02-24',
+  });
 }
 
-async function createPaymentIntent(stripe, { amount, currency, metadata, idempotencyKey }) {
+async function createPaymentIntent(stripe, { amount, currency, metadata, 
+idempotencyKey }) {
   return stripe.paymentIntents.create(
     {
       amount,
@@ -30,9 +34,6 @@ function mapStripeStatus(stripeStatus) {
 }
 
 function verifyWebhookEvent(stripe, payload, signature, webhookSecret) {
-  if (!webhookSecret) {
-    throw new Error('STRIPE_WEBHOOK_SECRET is not configured');
-  }
   return stripe.webhooks.constructEvent(payload, signature, webhookSecret);
 }
 
