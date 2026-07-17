@@ -38,6 +38,12 @@ app.use(
 
 app.use(errorHandler);
 
-app.listen(config.port, () => {
-  console.log(`Payment gateway running on port ${config.port}`);
-});
+// VERCEL SERVERLESS FIX: Only listen on a port if NOT in production
+if (process.env.NODE_ENV !== 'production') {
+  app.listen(config.port, () => {
+    console.log(`Payment gateway running locally on port ${config.port}`);
+  });
+}
+
+// Export the app for Vercel's serverless functions
+module.exports = app;
