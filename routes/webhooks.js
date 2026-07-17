@@ -6,8 +6,7 @@ const { notifySanctuaryCore } = require('../services/notifySanctuaryCore');
 function createWebhooksRouter({ stripe, config }) {
   const router = express.Router();
 
-  router.post('/stripe', express.raw({ type: 'application/json' }), async (req, res) 
-=> {
+  router.post('/stripe', express.raw({ type: 'application/json' }), async (req, res) => {
     const signature = req.get('stripe-signature');
 
     if (!signature) {
