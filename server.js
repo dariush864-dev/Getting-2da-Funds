@@ -14,8 +14,21 @@ const config = loadEnv();
 const stripe = createStripeClient(config.stripeSecretKey);
 const app = express();
 
-// Security Middleware
-app.use(helmet()); 
+// Security Middleware - Configured to explicitly allow Stripe's domains
+app.use(
+  helmet({
+    contentSecurityPolicy: {
+      directives: {
+        defaultSrc: ["'self'"],
+        scriptSrc: ["'self'", "https://js.stripe.com"],
+        frameSrc: ["'self'", "https://js.stripe.com", "https://hooks.stripe.com"],
+        connectSrc: ["'self'", "https://api.stripe.com"],
+        styleSrc: ["'self'", "'unsafe-inline'"],
+        imgSrc: ["'self'", "data:", "https://*.stripe.com"]
+      },
+    },
+  })
+);
 app.use(cors()); 
 
 // Webhooks must be parsed as raw buffers before express.json()
